@@ -165,6 +165,64 @@
   .status-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
   .status-msg.error { color: #c23434; }
   .status-msg.ok { color: #1f8a4c; }
+
+  /* Manual UPI payment panel */
+  .upi-panel {
+    display: none;
+    margin-top: 16px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+  .upi-panel img { width: 170px; height: 170px; border-radius: 10px; border: 1px solid var(--border); }
+  .upi-panel .amount { font-size: 20px; font-weight: 700; margin: 8px 0 2px; }
+  .upi-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .vpa-box, .ref-box {
+    font-size: 13px;
+    background: #f4f1f8;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family: monospace;
+  }
+  .small-btn {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .upi-open-btn {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: #1f8a4c;
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .paid-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .upi-note { font-size: 11px; color: var(--muted); margin-top: 10px; }
   footer { text-align: center; color: var(--muted); font-size: 12px; padding-bottom: 30px; line-height: 2; }
   footer a { color: var(--accent); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
@@ -231,14 +289,35 @@
       </div>
     </div>
 
-    <button class="pay-btn" id="payBtn">Pay ₹49 &amp; Unlock Invite</button>
+    <button class="pay-btn" id="payBtn">Pay ₹49 via UPI</button>
     <div class="status-msg" id="statusMsg"></div>
+
+    <div class="upi-panel" id="upiPanel">
+      <img id="upiQr" alt="UPI QR code" />
+      <div class="amount" id="upiAmount">₹49</div>
+      <div class="upi-row">
+        <span class="vpa-box" id="upiVpa"></span>
+        <button class="small-btn" id="copyVpaBtn" type="button">Copy</button>
+      </div>
+      <div class="upi-row">
+        Reference: <span class="ref-box" id="upiRef"></span>
+        <button class="small-btn" id="copyRefBtn" type="button">Copy</button>
+      </div>
+      <div>
+        <a class="upi-open-btn" id="upiOpenBtn" href="#">📱 Open in GPay / PhonePe / Paytm</a>
+      </div>
+      <p class="upi-note">Scan the QR or tap the button above to pay from your UPI app, mentioning the reference code. Then tap below to notify us — we'll verify and send your invite link on WhatsApp, usually within a few hours.</p>
+      <div>
+        <a class="paid-btn" id="paidBtn" href="#" target="_blank" rel="noopener">✅ I've Paid — Notify on WhatsApp</a>
+      </div>
+    </div>
+
     <div class="link-box" id="linkBox"></div>
   </div>
 </div>
 
 <footer>
-  Demo storefront · Razorpay test mode<br/>
+  Demo storefront · Pay via UPI (GPay / PhonePe / Paytm)<br/>
   <a href="/contact.html">Contact Us</a> ·
   <a href="/privacy.html">Privacy Policy</a> ·
   <a href="/terms.html">Terms &amp; Conditions</a> ·
@@ -253,6 +332,16 @@ const occasionLabels = {
   housewarming: { tag: 'Come Celebrate With Us', occasion: 'Housewarming' },
 };
 
+// Switch back to 'razorpay' once Razorpay KYC is approved and real keys are set in .env
+const PAYMENT_CONFIG = {
+  mode: 'upi',
+  vpa: '8279779318@ptaxis',
+  payeeName: 'Vasu Gupta',
+  whatsapp: '918279779318', // country code + number, no + or spaces
+};
+
+const TIER_AMOUNTS = { base: 49, premium: 99 };
+
 let state = { theme: 'birthday', tier: 'base', unlocked: false };
 
 const previewCard = document.getElementById('previewCard');
@@ -264,6 +353,7 @@ const pMessage = document.getElementById('pMessage');
 const payBtn = document.getElementById('payBtn');
 const statusMsg = document.getElementById('statusMsg');
 const linkBox = document.getElementById('linkBox');
+const upiPanel = document.getElementById('upiPanel');
 
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -312,7 +402,9 @@ function selectTier(tier) {
   state.tier = tier;
   document.getElementById('tierBase').classList.toggle('active', tier === 'base');
   document.getElementById('tierPremium').classList.toggle('active', tier === 'premium');
-  payBtn.textContent = tier === 'premium' ? 'Pay ₹99 & Unlock Invite' : 'Pay ₹49 & Unlock Invite';
+  const amount = TIER_AMOUNTS[tier];
+  payBtn.textContent = PAYMENT_CONFIG.mode === 'upi' ? `Pay ₹${amount} via UPI` : `Pay ₹${amount} & Unlock Invite`;
+  upiPanel.style.display = 'none'; // amount changed, force re-generating the QR/link
 }
 document.getElementById('tierBase').addEventListener('click', () => selectTier('base'));
 document.getElementById('tierPremium').addEventListener('click', () => selectTier('premium'));
@@ -323,6 +415,37 @@ function setStatus(text, kind) {
 }
 
 payBtn.addEventListener('click', async () => {
+  if (PAYMENT_CONFIG.mode === 'upi') {
+    showUpiPanel();
+  } else {
+    await payViaRazorpay();
+  }
+});
+
+function generateReference() {
+  return 'INV' + Date.now().toString(36).toUpperCase();
+}
+
+function showUpiPanel() {
+  const amount = TIER_AMOUNTS[state.tier];
+  const ref = generateReference();
+  const note = `InviteCraft ${ref}`;
+  const upiLink = `upi://pay?pa=${encodeURIComponent(PAYMENT_CONFIG.vpa)}&pn=${encodeURIComponent(PAYMENT_CONFIG.payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+
+  document.getElementById('upiAmount').textContent = '₹' + amount;
+  document.getElementById('upiVpa').textContent = PAYMENT_CONFIG.vpa;
+  document.getElementById('upiRef').textContent = ref;
+  document.getElementById('upiQr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=170x170&data=' + encodeURIComponent(upiLink);
+  document.getElementById('upiOpenBtn').href = upiLink;
+
+  const waText = `Hi! I've paid ₹${amount} for a ${state.tier === 'premium' ? 'Premium' : 'Base'} InviteCraft invite.\nReference: ${ref}\nHost: ${document.getElementById('hostNames').value.trim() || '-'}\nOccasion: ${state.theme}\nPlease send my invite link. Thanks!`;
+  document.getElementById('paidBtn').href = `https://wa.me/${PAYMENT_CONFIG.whatsapp}?text=${encodeURIComponent(waText)}`;
+
+  upiPanel.style.display = 'block';
+  setStatus('Scan/pay, then tap "I\'ve Paid" to notify us on WhatsApp.', '');
+}
+
+async function payViaRazorpay() {
   setStatus('Creating order...', '');
   payBtn.disabled = true;
   try {
@@ -369,7 +492,7 @@ payBtn.addEventListener('click', async () => {
     setStatus(err.message || 'Something went wrong.', 'error');
     payBtn.disabled = false;
   }
-});
+}
 
 function unlockInvite() {
   state.unlocked = true;
@@ -388,6 +511,16 @@ function unlockInvite() {
   linkBox.textContent = 'Shareable link: ' + shareLink;
 }
 
+document.getElementById('copyVpaBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('upiVpa').textContent);
+  setStatus('UPI ID copied.', 'ok');
+});
+document.getElementById('copyRefBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('upiRef').textContent);
+  setStatus('Reference code copied.', 'ok');
+});
+
+selectTier('base');
 updatePreview();
 </script>
 
