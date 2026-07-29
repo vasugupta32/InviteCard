@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InviteCraft — Personalized Digital Invites</title>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<style>
+  :root {
+    --ink: #241f2b;
+    --muted: #7a7488;
+    --border: #e8e3ee;
+    --accent: #b3468f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #faf8fc;
+    color: var(--ink);
+  }
+  header {
+    padding: 28px 24px 8px;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 4px; font-size: 28px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .wrap {
+    max-width: 980px;
+    margin: 24px auto 60px;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+  @media (max-width: 820px) {
+    .wrap { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+  }
+  .panel h2 { margin-top: 0; font-size: 16px; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 14px 0 6px;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fdfcff;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+
+  .occasion-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .occasion-grid button {
+    padding: 10px 4px;
+    font-size: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #fdfcff;
+    cursor: pointer;
+  }
+  .occasion-grid button.active {
+    border-color: var(--accent);
+    background: #fbeaf5;
+    font-weight: 700;
+  }
+
+  .tier-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .tier-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    cursor: pointer;
+  }
+  .tier-card.active { border-color: var(--accent); background: #fbeaf5; }
+  .tier-card .price { font-size: 18px; font-weight: 700; }
+  .tier-card .desc { font-size: 12px; color: var(--muted); }
+
+  /* Preview */
+  .preview-card {
+    position: relative;
+    border-radius: 18px;
+    padding: 34px 22px;
+    text-align: center;
+    color: #fff;
+    overflow: hidden;
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: background .3s;
+  }
+  .preview-card .tag { text-transform: uppercase; letter-spacing: 2px; font-size: 11px; opacity: .85; }
+  .preview-card h3 { font-size: 26px; margin: 10px 0 4px; }
+  .preview-card .sub { font-size: 14px; opacity: .9; margin-bottom: 18px; }
+  .preview-card .details { font-size: 13px; line-height: 1.8; background: rgba(255,255,255,.14); border-radius: 12px; padding: 12px 16px; display: inline-block; margin: 0 auto; }
+  .preview-card .msg { margin-top: 16px; font-style: italic; font-size: 13px; opacity: .95; }
+
+  .theme-birthday { background: linear-gradient(145deg,#ff6a88,#ff9a56); }
+  .theme-wedding { background: linear-gradient(145deg,#7a1f3d,#b3833f); }
+  .theme-babyshower { background: linear-gradient(145deg,#6fb6e8,#f5a3c7); }
+  .theme-housewarming { background: linear-gradient(145deg,#3fa66a,#8fd19e); }
+
+  .locked-overlay {
+    position: absolute;
+    inset: 0;
+    backdrop-filter: blur(7px);
+    background: rgba(20,15,25,.42);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .locked-overlay .lock-icon { font-size: 30px; }
+  .locked-overlay p { margin: 0; font-size: 13px; color: #fff; max-width: 220px; }
+
+  .pay-btn {
+    margin-top: 16px;
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .pay-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+  .link-box {
+    margin-top: 14px;
+    display: none;
+    background: #f2fbf4;
+    border: 1px solid #b7e4c0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    word-break: break-all;
+  }
+  .status-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .status-msg.error { color: #c23434; }
+  .status-msg.ok { color: #1f8a4c; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding-bottom: 30px; line-height: 2; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>💌 InviteCraft</h1>
+  <p>Personalized digital invites for weddings, birthdays, baby showers &amp; more — pay once, share the link forever.</p>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <h2>1. Pick an occasion</h2>
+    <div class="occasion-grid" id="occasionGrid">
+      <button data-theme="birthday" class="active">🎂 Birthday</button>
+      <button data-theme="wedding">💍 Wedding</button>
+      <button data-theme="babyshower">🍼 Baby Shower</button>
+      <button data-theme="housewarming">🏡 Housewarming</button>
+    </div>
+
+    <h2 style="margin-top:22px;">2. Event details</h2>
+    <label for="hostNames">Host name(s)</label>
+    <input id="hostNames" placeholder="e.g. Aarav &amp; Family" />
+
+    <label for="eventDate">Date</label>
+    <input id="eventDate" type="date" />
+
+    <label for="eventTime">Time</label>
+    <input id="eventTime" type="time" />
+
+    <label for="venue">Venue</label>
+    <input id="venue" placeholder="e.g. Green Meadows Banquet Hall, Pune" />
+
+    <label for="message">Personal message</label>
+    <textarea id="message" placeholder="Join us as we celebrate..."></textarea>
+
+    <h2 style="margin-top:22px;">3. Choose a tier</h2>
+    <div class="tier-row">
+      <div class="tier-card active" id="tierBase" data-tier="base">
+        <div class="price">₹49</div>
+        <div class="desc">Text invite, template design</div>
+      </div>
+      <div class="tier-card" id="tierPremium" data-tier="premium">
+        <div class="price">₹99</div>
+        <div class="desc">+ your photo &amp; custom colors</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Live preview</h2>
+    <div class="preview-card theme-birthday" id="previewCard">
+      <div class="tag" id="pTag">You're Invited</div>
+      <h3 id="pHost">Aarav &amp; Family</h3>
+      <div class="sub" id="pOccasion">Birthday Celebration</div>
+      <div class="details" id="pDetails">📅 Pick a date · 🕒 Pick a time<br/>📍 Add your venue</div>
+      <div class="msg" id="pMessage">"Your personal message will appear here."</div>
+
+      <div class="locked-overlay" id="lockedOverlay">
+        <div class="lock-icon">🔒</div>
+        <p>Pay to unlock the full-resolution invite &amp; get your shareable link</p>
+      </div>
+    </div>
+
+    <button class="pay-btn" id="payBtn">Pay ₹49 &amp; Unlock Invite</button>
+    <div class="status-msg" id="statusMsg"></div>
+    <div class="link-box" id="linkBox"></div>
+  </div>
+</div>
+
+<footer>
+  Demo storefront · Razorpay test mode<br/>
+  <a href="/contact.html">Contact Us</a> ·
+  <a href="/privacy.html">Privacy Policy</a> ·
+  <a href="/terms.html">Terms &amp; Conditions</a> ·
+  <a href="/refund.html">Refund &amp; Cancellation</a>
+</footer>
+
+<script>
+const occasionLabels = {
+  birthday: { tag: 'You\'re Invited', occasion: 'Birthday Celebration' },
+  wedding: { tag: 'Save The Date', occasion: 'Wedding Ceremony' },
+  babyshower: { tag: 'A Little Star Is Coming', occasion: 'Baby Shower' },
+  housewarming: { tag: 'Come Celebrate With Us', occasion: 'Housewarming' },
+};
+
+let state = { theme: 'birthday', tier: 'base', unlocked: false };
+
+const previewCard = document.getElementById('previewCard');
+const pTag = document.getElementById('pTag');
+const pHost = document.getElementById('pHost');
+const pOccasion = document.getElementById('pOccasion');
+const pDetails = document.getElementById('pDetails');
+const pMessage = document.getElementById('pMessage');
+const payBtn = document.getElementById('payBtn');
+const statusMsg = document.getElementById('statusMsg');
+const linkBox = document.getElementById('linkBox');
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function updatePreview() {
+  const labels = occasionLabels[state.theme];
+  previewCard.className = 'preview-card theme-' + state.theme;
+
+  const host = document.getElementById('hostNames').value.trim() || 'Aarav & Family';
+  const date = document.getElementById('eventDate').value;
+  const time = document.getElementById('eventTime').value;
+  const venue = document.getElementById('venue').value.trim() || 'Add your venue';
+  const message = document.getElementById('message').value.trim() || 'Your personal message will appear here.';
+
+  pTag.textContent = labels.tag;
+  pHost.innerHTML = escapeHtml(host);
+  pOccasion.textContent = labels.occasion;
+  pDetails.innerHTML = `📅 ${date || 'Pick a date'} · 🕒 ${time || 'Pick a time'}<br/>📍 ${escapeHtml(venue)}`;
+  pMessage.textContent = '"' + message + '"';
+
+  // Re-attach the locked overlay if not yet unlocked (innerHTML rewrite above doesn't touch it, but keep safe)
+  if (!state.unlocked && !document.getElementById('lockedOverlay')) {
+    const overlay = document.createElement('div');
+    overlay.className = 'locked-overlay';
+    overlay.id = 'lockedOverlay';
+    overlay.innerHTML = '<div class="lock-icon">🔒</div><p>Pay to unlock the full-resolution invite &amp; get your shareable link</p>';
+    previewCard.appendChild(overlay);
+  }
+}
+
+document.getElementById('occasionGrid').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#occasionGrid button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.theme = btn.dataset.theme;
+  updatePreview();
+});
+
+['hostNames','eventDate','eventTime','venue','message'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updatePreview);
+});
+
+function selectTier(tier) {
+  state.tier = tier;
+  document.getElementById('tierBase').classList.toggle('active', tier === 'base');
+  document.getElementById('tierPremium').classList.toggle('active', tier === 'premium');
+  payBtn.textContent = tier === 'premium' ? 'Pay ₹99 & Unlock Invite' : 'Pay ₹49 & Unlock Invite';
+}
+document.getElementById('tierBase').addEventListener('click', () => selectTier('base'));
+document.getElementById('tierPremium').addEventListener('click', () => selectTier('premium'));
+
+function setStatus(text, kind) {
+  statusMsg.textContent = text;
+  statusMsg.className = 'status-msg' + (kind ? ' ' + kind : '');
+}
+
+payBtn.addEventListener('click', async () => {
+  setStatus('Creating order...', '');
+  payBtn.disabled = true;
+  try {
+    const orderRes = await fetch('/api/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tier: state.tier }),
+    });
+    const order = await orderRes.json();
+    if (!orderRes.ok) throw new Error(order.error || 'Could not create order');
+
+    const rzp = new Razorpay({
+      key: order.keyId,
+      amount: order.amount,
+      currency: order.currency,
+      order_id: order.orderId,
+      name: 'InviteCraft',
+      description: (state.tier === 'premium' ? 'Premium' : 'Base') + ' digital invite',
+      handler: async function (response) {
+        setStatus('Verifying payment...', '');
+        const verifyRes = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(response),
+        });
+        const verify = await verifyRes.json();
+        if (verify.success) {
+          unlockInvite();
+        } else {
+          setStatus('Payment could not be verified. Please try again.', 'error');
+          payBtn.disabled = false;
+        }
+      },
+      modal: {
+        ondismiss: function () {
+          setStatus('Payment cancelled.', '');
+          payBtn.disabled = false;
+        },
+      },
+      theme: { color: '#b3468f' },
+    });
+    rzp.open();
+  } catch (err) {
+    setStatus(err.message || 'Something went wrong.', 'error');
+    payBtn.disabled = false;
+  }
+});
+
+function unlockInvite() {
+  state.unlocked = true;
+  const overlay = document.getElementById('lockedOverlay');
+  if (overlay) overlay.remove();
+  setStatus('Payment verified — invite unlocked!', 'ok');
+  payBtn.textContent = 'Unlocked ✓';
+
+  // In a real product this link would point at a persisted, hosted invite page.
+  const params = new URLSearchParams({
+    theme: state.theme,
+    host: document.getElementById('hostNames').value.trim() || 'Aarav & Family',
+  });
+  const shareLink = window.location.origin + '/view?' + params.toString();
+  linkBox.style.display = 'block';
+  linkBox.textContent = 'Shareable link: ' + shareLink;
+}
+
+updatePreview();
+</script>
+
+</body>
+</html>
